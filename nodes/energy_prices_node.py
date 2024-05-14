@@ -4,60 +4,54 @@ import requests
 import json
 from loguru import logger
 
+
 ENERGY_CACHE_DIR = "energy_cache"
-DATA_TYPES_URLS = {
-    "electricity_price_today": "https://enever.nl/api/stroomprijs_vandaag.php?token=",
-    "electricity_price_tomorrow": "https://enever.nl/api/stroomprijs_morgen.php?token=",
-    "electricity_price_last_30_days": "https://enever.nl/api/stroomprijs_laatste30dagen.php?token=",
-    "gas_price_today": "https://enever.nl/api/gasprijs_vandaag.php?token=",
-    "gas_price_last_30_days": "https://enever.nl/api/gasprijs_laatste30dagen.php?token="
+API_BASE_URL = "https://enever.nl/api/"
+API_ENDPOINTS = {
+    "electricity_price_today": "stroomprijs_vandaag.php",
+    "electricity_price_tomorrow": "stroomprijs_morgen.php",
+    "electricity_price_last_30_days": "stroomprijs_laatste30dagen.php",
+    "gas_price_today": "gasprijs_vandaag.php",
+    "gas_price_last_30_days": "gasprijs_laatste30dagen.php"
 }
 
 
-def energy_prices_node(state):
-    ensure_cache_directory_exists()
-    url = DATA_TYPES_URLS['gas_price_today']
-    prices = get_energy_prices('gas_price_today', url)
-    if prices is None:
-        return {"error": "Data not available"}
-    provider_abbr = os.getenv("ENERGY_PROVIDER")
-    energy_price_today = prices[0][f'prijs{provider_abbr}']
-    return {"energy_price_today": energy_price_today}
+def get_api_url(data_type):
+    token = os.getenv("ENERGY_PRIZES_TOKEN")
+    return f"{API_BASE_URL}{API_ENDPOINTS[data_type]}?token={token}"
 
 
-def ensure_cache_directory_exists():
-    if not os.path.exists(ENERGY_CACHE_DIR):
-        os.makedirs(ENERGY_CACHE_DIR)
+def ensure_directory_exists(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
 
 
-def get_cache_file_name(data_type):
+def get_cache_file_path(data_type):
     today = datetime.date.today().isoformat()
-    return f'{ENERGY_CACHE_DIR}/{data_type}_{today}.json'
+    return os.path.join(ENERGY_CACHE_DIR, f"{data_type}_{today}.json")
 
 
-def load_data_from_cache(cache_file):
+def load_data_from_cache(file_path):
     try:
-        with open(cache_file, 'r') as file:
+        with open(file_path, 'r') as file:
             return json.load(file)
     except FileNotFoundError:
         return None
 
 
-def save_data_to_cache(cache_file, data):
-    with open(cache_file, 'w') as file:
+def save_data_to_cache(file_path, data):
+    with open(file_path, 'w') as file:
         json.dump(data, file)
 
 
-def fetch_prices_from_api(url):
-    token = os.getenv("ENERGY_PRIZES_TOKEN")
-    full_url = f"{url}{token}"
+def fetch_data_from_api(url):
     try:
-        response = requests.get(full_url)
+        response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        if data['status'] != "true":
+        if data.get('status') != "true":
             raise ValueError("API response was not successful")
-        return data['data']
+        return data.get('data')
     except requests.HTTPError as e:
         logger.error(f"HTTP error occurred: {e}")
         return None
@@ -66,22 +60,42 @@ def fetch_prices_from_api(url):
         return None
 
 
-def get_energy_prices(data_type, url):
+def get_energy_prices(data_type):
     if data_type == "electricity_price_tomorrow" and datetime.datetime.now().hour < 16:
         logger.info(f"Data for {data_type} not yet available. Skipping.")
         return None
 
-    cache_file = get_cache_file_name(data_type)
-    cached_data = load_data_from_cache(cache_file)
+    ensure_directory_exists(ENERGY_CACHE_DIR)
+    cache_file_path = get_cache_file_path(data_type)
+    cached_data = load_data_from_cache(cache_file_path)
 
     if cached_data:
-        logger.info(f"Using cached data for {data_type}")
+        logger.info(f"Using cached data for {data_type}.")
         return cached_data
 
+    url = get_api_url(data_type)
     try:
-        prices = fetch_prices_from_api(url)
-        save_data_to_cache(cache_file, prices)
+        prices = fetch_data_from_api(url)
+        save_data_to_cache(cache_file_path, prices)
         return prices
     except Exception as e:
         logger.error(f"An error occurred while getting energy prices for {data_type}: {e}")
         return None
+
+
+def transform_data(data):
+    transformed = []
+    provider_abbr = os.getenv("ENERGY_PROVIDER")
+    for entry in data:
+        date_obj = datetime.datetime.strptime(entry["datum"], "%Y-%m-%d %H:%M:%S")
+        iso_date = date_obj.isoformat()
+        transformed.append({"date": iso_date, "price": entry[provider_abbr]})
+    return transformed
+
+
+def energy_prices_node(state):
+    prices = get_energy_prices('electricity_price_today')
+    if prices is None:
+        return {"error": "Data not available"}
+    energy_prices_per_hour = transform_data(prices)
+    return {"energy_prices_per_hour": energy_prices_per_hour}

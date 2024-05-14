@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 from nodes.weather_forecast_node import weather_forecast_node
 from nodes.energy_prices_node import energy_prices_node
+from nodes.nest_information_node import nest_information_node
 from loguru import logger
 
 load_dotenv()
@@ -12,3 +13,5 @@ result = energy_prices_node(state)
 logger.info(f"Energy prices: {result}")
 result = weather_forecast_node(state)
 logger.info(f"Weather forecast: {result}")
+result = nest_information_node(state)
+logger.info(f"Nest information: {result}")
