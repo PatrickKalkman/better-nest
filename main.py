@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from nodes.weather_forecast_node import weather_forecast_node
 from nodes.energy_prices_node import energy_prices_node
-from nodes.nest_information_node import nest_information_node
+from nodes.sensor_data_node import sensor_data_node
 from loguru import logger
 
 load_dotenv()
@@ -10,8 +10,8 @@ logger.info("Starting better nest agent...")
 
 state = {}
 result = energy_prices_node(state)
-logger.info(f"Energy prices: {result}")
+logger.info(f"{result}")
 result = weather_forecast_node(state)
-logger.info(f"Weather forecast: {result}")
-result = nest_information_node(state)
-logger.info(f"Nest information: {result}")
+logger.info(f"{result}")
+result = sensor_data_node(state)
+logger.info(f"{result}")

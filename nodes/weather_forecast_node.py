@@ -1,47 +1,48 @@
 import os
 import datetime
 from loguru import logger
-import swagger_client
-from swagger_client.rest import ApiException
+import requests
 
-
-def initialize_api_client():
-    configuration = swagger_client.Configuration()
-    configuration.api_key['key'] = os.getenv("WEATHER_API_KEY")
-    return swagger_client.APIsApi(swagger_client.ApiClient(configuration))
+API_BASE_URL = "https://api.weatherapi.com/v1/forecast.json"
 
 
 def weather_forecast_node(state):
-    api_instance = initialize_api_client()
-    solar = get_solar_information(api_instance)
-    forecast = get_forecast_information(api_instance)
-    return {'solar': solar, 'forecast': forecast}
+    url = get_api_url()
+    forecast = fetch_data_from_api(url)
+    if forecast is None:
+        return {"error": "Data not available"}
+    transformed_forecast = transform_forecast_data(forecast)
+    return {"weather_forecast": transformed_forecast}
 
 
-def get_forecast_information(api_instance):
+def fetch_data_from_api(url):
     try:
-        location = os.getenv("LOCATION")
-        logger.info(f"Getting forecast information for {location}")
-        current_date = datetime.date.today() + datetime.timedelta(days=1)
-        formatted_date = current_date.strftime('%Y-%m-%d')
-        forecast = api_instance.forecast_weather(location, days=1, dt=formatted_date, alerts='no', aqi='no', tp=24)
-        return forecast
-    except ApiException as e:
-        logger.error(f"Exception when calling forecast: {e}")
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        return data['forecast']['forecastday'][0]['hour']
+    except requests.HTTPError as e:
+        logger.error(f"HTTP error occurred: {e}")
+        return None
+    except requests.RequestException as e:
+        logger.error(f"Request exception occurred: {e}")
         return None
 
 
-def get_solar_information(api_instance):
-    try:
-        location = os.getenv("LOCATION")
-        current_date = datetime.date.today()
-        formatted_date = current_date.strftime('%Y-%m-%d')
-        logger.info(f"Getting astronomy information for {location} on {formatted_date}")
-        api_response = api_instance.astronomy(location, formatted_date)
-        sunrise = api_response['astronomy']['astro']['sunrise']
-        sunset = api_response['astronomy']['astro']['sunset']
-        logger.info(f"Sunrise: {sunrise}, Sunset: {sunset}")
-        return {"sunrise": sunrise, "sunset": sunset}
-    except ApiException as e:
-        logger.error(f"Exception when calling astronomy: {e}")
-        return None
+def transform_forecast_data(forecast):
+    transformed_data = []
+    for entry in forecast:
+        date_iso = datetime.datetime.strptime(entry["time"], "%Y-%m-%d %H:%M").isoformat()
+        transformed_data.append({
+            "date": date_iso,
+            "temperature": entry["temp_c"]
+        })
+    return transformed_data
+
+
+def get_api_url():
+    api_key = os.getenv("WEATHER_API_KEY")
+    location = os.getenv("LOCATION")
+    current_date = datetime.date.today() + datetime.timedelta(days=1)
+    formatted_date = current_date.strftime('%Y-%m-%d')
+    return f"{API_BASE_URL}?q={location}&days=1&dt={formatted_date}&key={api_key}"
