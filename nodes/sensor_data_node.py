@@ -70,7 +70,7 @@ def get_device_info():
         access_token = get_access_token()
     except Exception as e:
         logger.error(f'Failed to get access token: {e}')
-        return
+        return None
 
     device_name = os.getenv('DEVICE_NAME')
     url = f'https://smartdevicemanagement.googleapis.com/v1/{device_name}'
@@ -78,10 +78,13 @@ def get_device_info():
     response = requests.get(url, headers=headers)
     if response.status_code == 401:
         logger.error('Authentication required. Please re-authenticate.')
-        return
+        return None
 
-    device_info = response.json()
-    return device_info
+    if response.status_code != 200:
+        logger.error(f'Failed to get device info. Status code: {response.status_code}')
+        return None
+
+    return response.json()
 
 
 def extract_device_traits(device_info):
