@@ -16,6 +16,14 @@ API_ENDPOINTS = {
 }
 
 
+def energy_prices_node(state):
+    prices = get_energy_prices('electricity_price_today')
+    if prices is None:
+        return {"error": "Data not available"}
+    energy_prices_per_hour = transform_data(prices)
+    return {"energy_prices_per_hour": energy_prices_per_hour}
+
+
 def get_api_url(data_type):
     token = os.getenv("ENERGY_PRIZES_TOKEN")
     return f"{API_BASE_URL}{API_ENDPOINTS[data_type]}?token={token}"
@@ -93,9 +101,3 @@ def transform_data(data):
     return transformed
 
 
-def energy_prices_node(state):
-    prices = get_energy_prices('electricity_price_today')
-    if prices is None:
-        return {"error": "Data not available"}
-    energy_prices_per_hour = transform_data(prices)
-    return {"energy_prices_per_hour": energy_prices_per_hour}

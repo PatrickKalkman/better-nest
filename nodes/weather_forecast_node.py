@@ -43,6 +43,6 @@ def transform_forecast_data(forecast):
 def get_api_url():
     api_key = os.getenv("WEATHER_API_KEY")
     location = os.getenv("LOCATION")
-    current_date = datetime.date.today() #+ datetime.timedelta(days=1)
+    current_date = datetime.date.today()  # + datetime.timedelta(days=1)
     formatted_date = current_date.strftime('%Y-%m-%d')
     return f"{API_BASE_URL}?q={location}&days=1&dt={formatted_date}&key={api_key}"
