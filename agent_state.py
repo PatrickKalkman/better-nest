@@ -32,6 +32,7 @@ class AgentState(TypedDict):
     sensor_data: SensorData
     temperature_setpoint: float
     bandwidth: float
+    insulation_factor: float
     setpoints: List[OptimalTemperature]
     baseline_cost: float
     optimized_cost: float

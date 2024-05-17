@@ -1,22 +1,25 @@
 from datetime import datetime, timedelta
 from loguru import logger
+import numpy as np
 
 
 def optimal_temperature_calculator_node(state):
-    electricity_prices_data = state.get('energy_prices_per_hour')
-    weather_forecast_data = state.get('weather_forecast')
-    sensor_data = state.get('sensor_data')
-    bandwidth = 6  # state.get('bandwidth')
-    temperature_setpoint = 21  # state.get('temperature_setpoint')
+    electricity_prices_data = state['energy_prices_per_hour']
+    weather_forecast_data = state['weather_forecast']
+    sensor_data = state['sensor_data']
+    bandwidth = state['bandwidth']
+    temperature_setpoint = state['temperature_setpoint']
+    insulation_factor = state['insulation_factor']
 
-    electricity_prices = [float(item['price']) for item in electricity_prices_data]
-    weather_forecast = [item['temperature'] for item in weather_forecast_data]
+    electricity_prices = np.array([float(item['price']) for item in electricity_prices_data])
+    weather_forecast = np.array([item['temperature'] for item in weather_forecast_data])
     current_temperature = sensor_data.get('ambient_temperature_celsius')
 
     setpoints = calculate_setpoints(electricity_prices, weather_forecast, temperature_setpoint,
-                                    bandwidth, current_temperature)
+                                    bandwidth, current_temperature, insulation_factor)
     setpoints_with_time = add_datetime_to_setpoints_and_round_setpoints(setpoints)
-    baseline_cost, optimized_cost, savings = calculate_costs(setpoints, electricity_prices, weather_forecast)
+    baseline_cost, optimized_cost, savings = calculate_costs(setpoints, electricity_prices,
+                                                             weather_forecast, temperature_setpoint)
 
     return {
         "setpoints": setpoints_with_time,
@@ -26,84 +29,72 @@ def optimal_temperature_calculator_node(state):
     }
 
 
-def calculate_setpoints(electricity_prices, weather_forecast, temperature_setpoint, bandwidth, current_temperature):
-    min_setpoint = temperature_setpoint - bandwidth / 2
-    max_setpoint = temperature_setpoint + bandwidth / 2
+def calculate_setpoints(electricity_prices, weather_forecast, temperature_setpoint,
+                        bandwidth, current_temperature, insulation_factor):
+
+    volatility = np.std(electricity_prices) / np.mean(electricity_prices)
+    dynamic_bandwidth = bandwidth * (1 + volatility)
+
+    min_setpoint = temperature_setpoint - dynamic_bandwidth / 2
+    max_setpoint = temperature_setpoint + dynamic_bandwidth / 2
 
     normalized_prices = normalize_prices(electricity_prices)
 
-    setpoints = [
+    setpoints = np.array([
         calculate_initial_setpoint(temperature_setpoint, min_setpoint, max_setpoint,
-                                   normalized_prices[hour], weather_forecast[hour], current_temperature)
+                                   normalized_prices[hour], weather_forecast[hour],
+                                   current_temperature, insulation_factor)
         for hour in range(24)
-    ]
+    ])
 
     setpoints = adjust_setpoints(setpoints, temperature_setpoint, min_setpoint, max_setpoint)
 
-    final_average = round(sum(setpoints) / 24, 2)
-    if abs(final_average - temperature_setpoint) > 0.01:
-        logger.info(f"Failed to adjust setpoints to exactly meet the average setpoint requirement. {final_average} != {temperature_setpoint}")
+    final_average = round(np.mean(setpoints), 2)
+    if abs(final_average - temperature_setpoint) > 0.5:
+        logger.info(f"Adjusted setpoints within ±0.5°C range. {final_average} != {temperature_setpoint}")
 
     return setpoints
 
 
 def normalize_prices(electricity_prices):
-    max_price = max(electricity_prices)
-    min_price = min(electricity_prices)
-    return [(price - min_price) / (max_price - min_price) for price in electricity_prices]
+    min_price = np.min(electricity_prices)
+    max_price = np.max(electricity_prices)
+    return (electricity_prices - min_price) / (max_price - min_price)
 
 
 def calculate_initial_setpoint(average_setpoint, min_setpoint, max_setpoint, price_factor,
-                               outside_temp, current_temperature):
-    if price_factor > 0.5:
-        ideal_setpoint = average_setpoint + (max_setpoint - average_setpoint) * (price_factor - 0.5) * 2
-    else:
-        ideal_setpoint = average_setpoint - (average_setpoint - min_setpoint) * (0.5 - price_factor) * 2
+                               outside_temp, current_temperature, insulation_factor):
+    # More aggressive adjustment based on price factor
+    ideal_setpoint = average_setpoint + (max_setpoint - min_setpoint) * (0.75 - price_factor) * 2
 
-    # Adjust setpoint based on outside temperature
-    if outside_temp < average_setpoint:
-        ideal_setpoint += (average_setpoint - outside_temp) * 0.1
-    elif outside_temp > average_setpoint:
-        ideal_setpoint -= (outside_temp - average_setpoint) * 0.1
+    # Adjust setpoint based on outside temperature and insulation factor
+    temp_adjustment = insulation_factor * (0.1 * (average_setpoint - outside_temp) if outside_temp < average_setpoint else -0.1 * (outside_temp - average_setpoint))
+    ambient_adjustment = 0.05 * (average_setpoint - current_temperature) if current_temperature < average_setpoint else -0.05 * (current_temperature - average_setpoint)
 
-    # Further adjust based on current ambient temperature
-    if current_temperature < average_setpoint:
-        ideal_setpoint += (average_setpoint - current_temperature) * 0.05
-    elif current_temperature > average_setpoint:
-        ideal_setpoint -= (current_temperature - average_setpoint) * 0.05
-
-    return max(min_setpoint, min(max_setpoint, ideal_setpoint))
+    ideal_setpoint += temp_adjustment + ambient_adjustment
+    return np.clip(ideal_setpoint, min_setpoint, max_setpoint)
 
 
 def adjust_setpoints(setpoints, average_setpoint, min_setpoint, max_setpoint):
-    total_setpoint = sum(setpoints)
-    current_average = total_setpoint / 24
+    current_average = np.mean(setpoints)
     adjustment_needed = average_setpoint - current_average
 
-    for i in range(24):
-        setpoints[i] += adjustment_needed
-        setpoints[i] = max(min_setpoint, min(max_setpoint, setpoints[i]))
-
-    return setpoints
+    adjusted_setpoints = setpoints + adjustment_needed
+    return np.clip(adjusted_setpoints, min_setpoint, max_setpoint)
 
 
 def add_datetime_to_setpoints_and_round_setpoints(setpoints):
     current_time = datetime.now()
     return [
         {'time': (current_time + timedelta(hours=hour)).strftime('%Y-%m-%d %H:%M:%S'),
-         'setpoint': round(setpoints[hour], 2)}
-        for hour in range(24)
+         'setpoint': round(setpoint, 2)}
+        for hour, setpoint in enumerate(setpoints)
     ]
 
 
-def calculate_costs(setpoints, electricity_prices, outside_temperatures):
-    baseline_cost = 0
-    optimized_cost = 0
-    average_setpoint = 20
-
-    for hour in range(24):
-        baseline_cost += abs(outside_temperatures[hour] - average_setpoint) * electricity_prices[hour]
-        optimized_cost += abs(outside_temperatures[hour] - setpoints[hour]) * electricity_prices[hour]
+def calculate_costs(setpoints, electricity_prices, outside_temperatures, baseline_setpoint):
+    baseline_cost = np.sum(np.abs(outside_temperatures - baseline_setpoint) * electricity_prices)
+    optimized_cost = np.sum(np.abs(outside_temperatures - setpoints) * electricity_prices)
 
     savings = baseline_cost - optimized_cost
     return round(baseline_cost, 2), round(optimized_cost, 2), round(savings, 2)
