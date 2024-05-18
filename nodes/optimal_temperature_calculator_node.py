@@ -71,7 +71,7 @@ def calculate_initial_setpoint(average_setpoint, min_setpoint, max_setpoint, pri
     temp_adjustment = insulation_factor * (0.1 * (average_setpoint - outside_temp)
                                            if outside_temp < average_setpoint
                                            else -0.1 * (outside_temp - average_setpoint))
-    
+
     ambient_adjustment = (
         0.05 * (average_setpoint - current_temperature)
         if current_temperature < average_setpoint

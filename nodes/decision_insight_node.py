@@ -35,10 +35,10 @@ def decision_insight_node(state):
         - Temperature setpoint: {temperature_setpoint}
         - Insulation factor: {insulation_factor}
 
-        Explain why the temperature at {hour}:00 is set to {setpoint} degrees. Give a brief explanation. 
+        Explain why the temperature at {hour}:00 is set to {setpoint} degrees. Give a brief explanation.
         For example, 'The temperature is set the lower limit of {setpoint} degrees celcius because the electricity
         prices are high and the weather is cold.' Or
-        'The temperature is set to the higher limit of {setpoint} degrees celcius because the electricity prices are 
+        'The temperature is set to the higher limit of {setpoint} degrees celcius because the electricity prices are
         low and the weather is warm.'
         Also consider that the average temperature should be within the bandwidth range over 24 hours.
 
