@@ -51,7 +51,7 @@ def calculate_setpoints(electricity_prices, weather_forecast, temperature_setpoi
 
     final_average = round(np.mean(setpoints), 2)
     if abs(final_average - temperature_setpoint) > 0.5:
-        logger.info(f"Adjusted setpoints within ±0.5°C range. {final_average} != {temperature_setpoint}")
+        logger.info(f"Adjusted setpoints outside ±0.5°C range. {final_average} != {temperature_setpoint}")
 
     return setpoints
 
@@ -64,12 +64,17 @@ def normalize_prices(electricity_prices):
 
 def calculate_initial_setpoint(average_setpoint, min_setpoint, max_setpoint, price_factor,
                                outside_temp, current_temperature, insulation_factor):
-    # More aggressive adjustment based on price factor
-    ideal_setpoint = average_setpoint + (max_setpoint - min_setpoint) * (0.75 - price_factor) * 2
 
-    # Adjust setpoint based on outside temperature and insulation factor
-    temp_adjustment = insulation_factor * (0.1 * (average_setpoint - outside_temp) if outside_temp < average_setpoint else -0.1 * (outside_temp - average_setpoint))
-    ambient_adjustment = 0.05 * (average_setpoint - current_temperature) if current_temperature < average_setpoint else -0.05 * (current_temperature - average_setpoint)
+    ideal_setpoint = average_setpoint + (max_setpoint - min_setpoint) * (0.75 - price_factor) * 2
+    temp_adjustment = insulation_factor * (0.1 * (average_setpoint - outside_temp)
+                                           if outside_temp < average_setpoint
+                                           else -0.1 * (outside_temp - average_setpoint))
+    
+    ambient_adjustment = (
+        0.05 * (average_setpoint - current_temperature)
+        if current_temperature < average_setpoint
+        else -0.05 * (current_temperature - average_setpoint)
+    )
 
     ideal_setpoint += temp_adjustment + ambient_adjustment
     return np.clip(ideal_setpoint, min_setpoint, max_setpoint)
@@ -95,6 +100,5 @@ def add_datetime_to_setpoints_and_round_setpoints(setpoints):
 def calculate_costs(setpoints, electricity_prices, outside_temperatures, baseline_setpoint):
     baseline_cost = np.sum(np.abs(outside_temperatures - baseline_setpoint) * electricity_prices)
     optimized_cost = np.sum(np.abs(outside_temperatures - setpoints) * electricity_prices)
-
     savings = baseline_cost - optimized_cost
     return round(baseline_cost, 2), round(optimized_cost, 2), round(savings, 2)

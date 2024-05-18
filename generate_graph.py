@@ -19,15 +19,19 @@ def generate_graph(state):
         'Hour': hours,
         'Setpoints': setpoints,
         'Weather forecast': weather_forecast,
-        'Electricity prices (Scaled)': np.interp(electricity_prices, (min(electricity_prices), max(electricity_prices)), (min_setpoint, max_setpoint))
+        'Electricity prices (Scaled)': np.interp(electricity_prices,
+                                                 (min(electricity_prices), max(electricity_prices)),
+                                                 (min_setpoint, max_setpoint))
     })
 
     plt.figure(figsize=(16, 9))
     sns.set_theme(style="darkgrid")
 
     sns.lineplot(x='Hour', y='Setpoints', data=data, marker='o', color='#0077b6', linewidth=2, label='Setpoints')
-    sns.lineplot(x='Hour', y='Weather forecast', data=data, marker='s', color='#52b788', linestyle='--', linewidth=2, label='Weather forecast')
-    sns.lineplot(x='Hour', y='Electricity prices (Scaled)', data=data, marker='d', color='#f4a261', linestyle='-.', linewidth=2, label='Electricity Prices (Scaled)')
+    sns.lineplot(x='Hour', y='Weather forecast', data=data, marker='s', color='#52b788',
+                 linestyle='--', linewidth=2, label='Weather forecast')
+    sns.lineplot(x='Hour', y='Electricity prices (Scaled)', data=data, marker='d',
+                 color='#f4a261', linestyle='-.', linewidth=2, label='Electricity Prices (Scaled)')
     plt.axhline(y=temperature_setpoint, color='#e63946', linestyle='-', linewidth=2, label='Baseline temperature')
     plt.fill_between(hours, min_setpoint, max_setpoint, color='#ffcb77', alpha=0.3, label='Bandwidth range')
 
