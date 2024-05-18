@@ -9,8 +9,6 @@ MODEL_NAME = "Llama3-70b-8192"
 
 
 def decision_insight_node(state):
-    GROQ_LLM = ChatGroq(model=MODEL_NAME)
-
     if state.get('mode') == 'demo':
         return {"explanation": ("The temperature at 10:00:00 is set to 22.28 degrees because the electricity prices are"
                                 "relatively low at this time, and the weather is warm with a forecasted temperature"
@@ -19,6 +17,8 @@ def decision_insight_node(state):
                                 "temperature adjustments to optimize energy costs. By setting the temperature to "
                                 "22.28°C, the system is taking advantage of the low energy prices while maintaining "
                                 "a comfortable temperature and staying within the desired bandwidth.")}
+
+    GROQ_LLM = ChatGroq(model=MODEL_NAME)
 
     explain_calculated_setpoints_prompt = PromptTemplate(
         template="""\

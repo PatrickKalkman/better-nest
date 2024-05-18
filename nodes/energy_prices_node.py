@@ -98,7 +98,7 @@ def get_energy_prices(data_type):
 
 def transform_data(data):
     transformed = []
-    provider_abbr = os.getenv("ENERGY_PROVIDER")
+    provider_abbr = os.getenv("ENERGY_PROVIDER") or "prijsEN"
     for entry in data:
         date_obj = datetime.datetime.strptime(entry["datum"], "%Y-%m-%d %H:%M:%S")
         iso_date = date_obj.isoformat()
