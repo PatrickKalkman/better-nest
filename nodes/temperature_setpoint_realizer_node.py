@@ -6,6 +6,12 @@ from nodes.token_utils import get_access_token
 
 
 def temperature_setpoint_realizer_node(state):
+    logger.info('Running temperature setpoint realizer node with mode ' + state.get('mode'))
+    if state.get('mode') == 'demo':
+        logger.info('Demo mode: Skipping temperature setpoint realization.')
+        return {"status": "demo mode - no action taken"}
+
+    logger.info('Realizing temperature setpoint')
     current_hour = round(time() / 3600) % 24
     setpoints = state['setpoints']
     temperature_setpoint = setpoints[current_hour]['setpoint']

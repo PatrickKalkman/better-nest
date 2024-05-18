@@ -2,16 +2,21 @@ import os
 import datetime
 from loguru import logger
 import requests
+import json
 
 API_BASE_URL = "https://api.weatherapi.com/v1/forecast.json"
+WEATHER_CACHE_DIR = "cache"
 
 
 def weather_forecast_node(state):
-    url = get_api_url()
-    forecast = fetch_data_from_api(url)
-    if forecast is None:
-        return {"error": "Data not available"}
-    transformed_forecast = transform_forecast_data(forecast)
+    if state.get('mode') == 'demo':
+        transformed_forecast = load_demo_weather_forecast()
+    else:
+        url = get_api_url()
+        forecast = fetch_data_from_api(url)
+        if forecast is None:
+            return {"error": "Data not available"}
+        transformed_forecast = transform_forecast_data(forecast)
     return {"weather_forecast": transformed_forecast}
 
 
@@ -46,3 +51,13 @@ def get_api_url():
     current_date = datetime.date.today()  # + datetime.timedelta(days=1)
     formatted_date = current_date.strftime('%Y-%m-%d')
     return f"{API_BASE_URL}?q={location}&days=1&dt={formatted_date}&key={api_key}"
+
+
+def load_demo_weather_forecast():
+    demo_file_path = os.path.join(WEATHER_CACHE_DIR, "demo_weather_forecast.json")
+    try:
+        with open(demo_file_path, 'r') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        logger.error(f"Demo data file not found: {demo_file_path}")
+        return None

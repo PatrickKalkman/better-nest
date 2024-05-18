@@ -37,3 +37,4 @@ class AgentState(TypedDict):
     baseline_cost: float
     optimized_cost: float
     savings: float
+    mode: str

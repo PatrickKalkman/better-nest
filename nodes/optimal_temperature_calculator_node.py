@@ -4,6 +4,7 @@ import numpy as np
 
 
 def optimal_temperature_calculator_node(state):
+
     electricity_prices_data = state['energy_prices_per_hour']
     weather_forecast_data = state['weather_forecast']
     sensor_data = state['sensor_data']
@@ -18,6 +19,7 @@ def optimal_temperature_calculator_node(state):
     setpoints = calculate_setpoints(electricity_prices, weather_forecast, temperature_setpoint,
                                     bandwidth, current_temperature, insulation_factor)
     setpoints_with_time = add_datetime_to_setpoints_and_round_setpoints(setpoints)
+
     baseline_cost, optimized_cost, savings = calculate_costs(setpoints, electricity_prices,
                                                              weather_forecast, temperature_setpoint)
 

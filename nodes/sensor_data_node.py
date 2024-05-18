@@ -6,11 +6,14 @@ from nodes.token_utils import get_access_token
 
 
 def sensor_data_node(state):
-    device_info = get_device_info()
-    if device_info:
-        extracted_traits = extract_device_traits(device_info)
-        return {'sensor_data': extracted_traits}
-    return {'error': 'Data not available'}
+    if state.get('mode') == 'demo':
+        return {'sensor_data': get_demo_data()}
+    else:
+        device_info = get_device_info()
+        if device_info:
+            extracted_traits = extract_device_traits(device_info)
+            return {'sensor_data': extracted_traits}
+        return {'error': 'Data not available'}
 
 
 def get_device_info():
@@ -52,3 +55,13 @@ def extract_device_traits(device_info):
         "status": status,
         "connectivity_status": connectivity_status
     }
+
+
+def get_demo_data():
+    return {
+        "heat_celsius": 20,
+        "humidity": 65,
+        "ambient_temperature_celsius": 21.5,
+        "thermostat_mode": "heat",
+        "status": "heating",
+        "connectivity_status": "online"}

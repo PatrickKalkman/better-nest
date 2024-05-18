@@ -11,6 +11,15 @@ MODEL_NAME = "Llama3-70b-8192"
 def decision_insight_node(state):
     GROQ_LLM = ChatGroq(model=MODEL_NAME)
 
+    if state.get('mode') == 'demo':
+        return {"explanation": ("The temperature at 10:00:00 is set to 22.28 degrees because the electricity prices are"
+                                "relatively low at this time, and the weather is warm with a forecasted temperature"
+                                " of 18.8°C. Additionally, the average temperature over the 24-hour period should be"
+                                " within the bandwidth range of 6.0°C, which allows for some flexibility in "
+                                "temperature adjustments to optimize energy costs. By setting the temperature to "
+                                "22.28°C, the system is taking advantage of the low energy prices while maintaining "
+                                "a comfortable temperature and staying within the desired bandwidth.")}
+
     explain_calculated_setpoints_prompt = PromptTemplate(
         template="""\
         system
@@ -40,8 +49,8 @@ def decision_insight_node(state):
     )
 
     explanation_generator = explain_calculated_setpoints_prompt | GROQ_LLM | StrOutputParser()
-    hour = f'{round(time() / 3600)} % 24:00'
-    setpoint_at_10 = state["setpoints"][10]
+    hour = round(time() / 3600) % 24
+    setpoint = state["setpoints"][hour]
     explanation = explanation_generator.invoke({
         "energy_prices": state["energy_prices_per_hour"],
         "weather_forecast": state["weather_forecast"],
@@ -51,9 +60,9 @@ def decision_insight_node(state):
         "temperature_setpoint": state["temperature_setpoint"],
         "insulation_factor": state["insulation_factor"],
         "hour": hour,
-        "setpoint": setpoint_at_10["setpoint"],
+        "setpoint": setpoint["setpoint"],
     })
 
-    logger.info(f"Explanation for {10}:00: {explanation}")
+    logger.info(f"Explanation for {hour}:00: {explanation}")
 
     return {"explanation": explanation}

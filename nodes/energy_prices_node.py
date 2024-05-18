@@ -5,7 +5,7 @@ import json
 from loguru import logger
 
 
-ENERGY_CACHE_DIR = "energy_cache"
+ENERGY_CACHE_DIR = "cache"
 API_BASE_URL = "https://enever.nl/api/"
 API_ENDPOINTS = {
     "electricity_price_today": "stroomprijs_vandaag.php",
@@ -17,9 +17,14 @@ API_ENDPOINTS = {
 
 
 def energy_prices_node(state):
-    prices = get_energy_prices('electricity_price_today')
+    if state.get('mode') == 'demo':
+        prices = load_demo_data()
+    else:
+        prices = get_energy_prices('electricity_price_today')
+
     if prices is None:
         return {"error": "Data not available"}
+
     energy_prices_per_hour = transform_data(prices)
     return {"energy_prices_per_hour": energy_prices_per_hour}
 
@@ -101,3 +106,11 @@ def transform_data(data):
     return transformed
 
 
+def load_demo_data():
+    demo_file_path = os.path.join(ENERGY_CACHE_DIR, "demo_electricity_price_today.json")
+    try:
+        with open(demo_file_path, 'r') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        logger.error(f"Demo data file not found: {demo_file_path}")
+        return None
