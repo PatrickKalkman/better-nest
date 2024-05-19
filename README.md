@@ -2,7 +2,9 @@
 
 [![Run Program](https://github.com/PatrickKalkman/better-nest/actions/workflows/run_program.yml/badge.svg)](https://github.com/PatrickKalkman/better-nest/actions/workflows/run_program.yml)
 
-This repository contains the code for the AI agent described in the Medium article "AI Agents for Climate Control: Harnessing Botanical Insights for Smarter Home Environments."
+![AI Agent](cover.jpg)
+
+This repository contains the code for the AI agent described in the [Medium article "AI Agents for Climate Control: Harnessing Botanical Insights for Smarter Home Environments."](https://medium.com/@pkalkman) 
 
 ## Running the Agent
 
