@@ -4,7 +4,7 @@
 
 ![AI Agent](cover.jpg)
 
-This repository contains the code for the AI agent described in the [Medium article "AI Agent for Smart Home Climate Control: Harnessing Botanical Strategies for Energy Efficiency"](https://medium.com/@pkalkman) 
+This repository contains the code for the AI agent described in the [Medium article "AI Agent for Smart Home Climate Control: Harnessing Botanical Strategies for Energy Efficiency"]([https://medium.com/@pkalkman](https://medium.com/generative-ai/ai-agent-for-smart-home-climate-control-harnessing-botanical-strategies-for-energy-efficiency-47d4e55d5e7f)) 
 
 ## Running the Agent
 
